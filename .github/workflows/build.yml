@@ -1,0 +1,53 @@
+name: Build Windows Turnip
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-turnip-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-11-arm
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Bootstrap pinned dependencies
+        run: python scripts/bootstrap.py
+      - name: Build ARM64 and ARM64X
+        run: .venv/Scripts/python.exe scripts/build.py --jobs 4
+      - name: Build ARM64 and x64 probes
+        run: .venv/Scripts/python.exe scripts/build_tests.py
+      - name: Verify both process ABIs
+        run: .venv/Scripts/python.exe scripts/verify.py
+      - name: Package binaries, symbols and reports
+        run: .venv/Scripts/python.exe scripts/package.py
+      - name: Upload driver packages
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: turnip-windows-${{ github.sha }}
+          path: dist/*.zip
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload diagnostics
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: build-diagnostics-${{ github.sha }}
+          path: |
+            logs/
+            out/build-info.json
+            out/verification.json
+            build/*/meson-logs/meson-log.txt
+          if-no-files-found: ignore
+          retention-days: 14
