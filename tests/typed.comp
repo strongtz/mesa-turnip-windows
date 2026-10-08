@@ -1,0 +1,26 @@
+#version 450
+#extension GL_EXT_shader_explicit_arithmetic_types : require
+layout(local_size_x = 64) in;
+layout(set = 0, binding = 0, std430) buffer Values { uint data[]; } values;
+void main()
+{
+    uint i = gl_GlobalInvocationID.x;
+    uint seed = values.data[i * 8];
+    uint16_t a = uint16_t(seed ^ (i * 137u));
+    uint16_t b = uint16_t(a * uint16_t(13) + uint16_t(17001));
+    int16_t s = int16_t(a);
+    int8_t c = int8_t(seed ^ i);
+    int8_t d = int8_t(c * int8_t(7) + int8_t(31));
+    uint64_t x = (uint64_t(seed) << 32) | uint64_t(i * 101u + 7u);
+    uint64_t y = (x * uint64_t(0x100000003ul)) ^ (x >> 17);
+    float16_t f = float16_t(int(i % 127u) - 63) * float16_t(0.5);
+    float16_t g = f * float16_t(1.5) + float16_t(0.25);
+    values.data[i * 8 + 0] = uint(b);
+    values.data[i * 8 + 1] = uint(int(s) >> 3);
+    values.data[i * 8 + 2] = uint(y);
+    values.data[i * 8 + 3] = uint(y >> 32);
+    values.data[i * 8 + 4] = uint(int(d));
+    values.data[i * 8 + 5] = uint(int(c) >> 2);
+    values.data[i * 8 + 6] = floatBitsToUint(float(g));
+    values.data[i * 8 + 7] = floatBitsToUint(float(f));
+}

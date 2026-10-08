@@ -1,0 +1,8 @@
+#version 450
+layout(local_size_x = 64) in;
+layout(set = 0, binding = 0, std430) buffer Values { uint data[]; } values;
+void main()
+{
+    uint i = gl_GlobalInvocationID.x;
+    values.data[i] = (values.data[i] ^ i) * 3u + 7u;
+}
