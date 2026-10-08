@@ -1,0 +1,10 @@
+/.venv/
+/build/
+/deps/
+/mesa/
+/out/
+/dist/
+/logs/
+/toolchain.json
+__pycache__/
+*.pyc

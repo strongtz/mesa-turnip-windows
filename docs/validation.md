@@ -1,0 +1,35 @@
+# 验证记录
+
+## Snapdragon X Elite 本机记录（2026-10-08）
+
+整理提交前的 ARM64X 构建已在 Adreno X1-85 上验证：
+
+- 原生 ARM64 和 x64：GPU 计算、跨队列同步、时间线值、BDA/计算状态恢复全部通过。
+- 两种架构的窗口测试各覆盖 18 组交换链、360 个显示像素检查，包含格式、sRGB、呈现模式、resize/recreate 和销毁。
+- FurMark x64，`furmark-vk`，1280×720，GPU 0：最终 20 秒运行 1099 帧，报告 min/avg/max 45/55/58 FPS，正常退出、stderr 为空。
+- 另一次 60 秒 FurMark 运行完成 3329 帧，平均 55 FPS；实际窗口内容已检查。
+
+这些是历史本机测量，不是所有未来 CI 构建的性能承诺。
+提交整理保留了原有 46 个修改/新增源码文件的内容；另行移除了上游镜像中已失效的 macOS GitHub 工作流。
+
+## 较早 ARM64 验证范围
+
+此前按功能分组运行过 Vulkan CTS，包括计算布局、同步/BDA、内存、描述符/GPL、光栅化/纹理、几何/细分/XFB、现代绘制以及 Win32 WSI/计时。
+这些是选定测试组的回归，不是全量 CTS 一致性认证。unsupported 不计作通过。
+曾完成 5.4 GiB 多缓冲区 GPU 读写与分配耗尽后恢复检查；没有通过人为 GPU 故障验证设备丢失恢复。
+
+## 可重复检查
+
+```powershell
+# 任意 Windows ARM64 runner：检查 ABI、导出、入口表，不依赖 Qualcomm GPU
+.venv/Scripts/python.exe scripts/verify.py
+
+# 支持的 Snapdragon 机器：检查真实 GPU 计算、复制、同步和 BDA
+.venv/Scripts/python.exe scripts/verify.py --gpu
+
+# 已解锁桌面：追加显示内容和交换链生命周期检查
+.venv/Scripts/python.exe scripts/verify.py --gpu --wsi
+```
+
+每条记录保存 DLL SHA256、程序架构、退出码和日志文件名到 `out/verification.json`。
+`scripts/package.py` 将报告与精确 Mesa SHA 放入 ZIP。CI 上传日志以便区分编译成功、ABI 检查成功和真实 GPU 测试成功。
