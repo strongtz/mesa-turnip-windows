@@ -1,10 +1,9 @@
 import struct
 import subprocess
 import shutil
-import json
 from pathlib import Path
 
-from common import compdb, response_run, split_command
+from common import compdb, split_command
 
 def weak_names(path):
     data = path.read_bytes()
@@ -94,9 +93,8 @@ def prepare_entrypoints(build, destination, env):
     return replacements
 
 def prepare_meson():
-    from pathlib import Path
     import mesonbuild
-    
+
     path = Path(mesonbuild.__file__).parent / 'compilers/mixins/visualstudio.py'
     text = path.read_text(encoding='utf-8')
     old = "        elif 'aarch64' in target:\n"
