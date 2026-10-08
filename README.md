@@ -6,6 +6,7 @@ GPU 命令和着色器由 Turnip/IR3 生成；窗口呈现通过共享 GPU 缓�
 - [Mesa 源码及分拆提交](https://github.com/strongtz/mesa)
 - [构建和打包工作流](https://github.com/strongtz/mesa-turnip-windows/actions/workflows/build.yml)
 - [架构与当前限制](docs/architecture.md) · [构建说明](docs/building.md) · [测试记录](docs/validation.md)
+- [Mesa 提交组织](docs/patches.md)
 
 本仓库保存构建脚本、测试程序和文档。`mesa-revision.json` 固定源码提交；不会自动跟随 Mesa 主分支。
 当前仅针对已验证的 Adreno X1-85、QCT 私有接口 4.50 / chip `0x60c512`。
