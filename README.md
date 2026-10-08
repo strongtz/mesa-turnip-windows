@@ -1,46 +1,46 @@
 # Mesa Turnip for Windows ARM64 / ARM64X
 
-在 Snapdragon X Elite 上，将 Mesa Turnip Vulkan 用户态驱动接到 Qualcomm 原厂 Windows KMD。
-GPU 命令和着色器由 Turnip/IR3 生成；窗口呈现通过共享 GPU 缓冲区接入 D3D12/DXGI。
+This project connects the Mesa Turnip Vulkan userspace driver to Qualcomm's stock Windows KMD on Snapdragon X Elite.
+Turnip/IR3 generates GPU commands and shaders; window presentation uses shared GPU buffers through D3D12/DXGI.
 
-- [Mesa 源码及分拆提交](https://github.com/strongtz/mesa)
-- [构建和打包工作流](https://github.com/strongtz/mesa-turnip-windows/actions/workflows/build.yml)
-- [架构与当前限制](docs/architecture.md) · [构建说明](docs/building.md) · [测试记录](docs/validation.md)
-- [Mesa 提交组织](docs/patches.md)
+- [Mesa source and patch series](https://github.com/strongtz/mesa)
+- [Build and packaging workflow](https://github.com/strongtz/mesa-turnip-windows/actions/workflows/build.yml)
+- [Architecture and limitations](docs/architecture.md) · [Build instructions](docs/building.md)
+- [Mesa patch organization](docs/patches.md)
 
-本仓库保存构建脚本、测试程序和文档。`mesa-revision.json` 固定源码提交；不会自动跟随 Mesa 主分支。
-当前仅针对已验证的 Adreno X1-85、QCT 私有接口 4.50 / chip `0x60c512`。
-这是实验性移植，尚未完成 Vulkan 一致性认证。
+This repository contains build scripts, test programs, and documentation. `mesa-revision.json` pins the source commit; builds do not automatically follow Mesa's main branch.
+The current port targets the validated Adreno X1-85 configuration, with QCT private interface 4.50 and chip `0x60c512`.
+This is an experimental port and has not completed Vulkan conformance certification.
 
-## 使用
+## Usage
 
-从 Actions 的成功运行下载 `turnip-windows-<commit>` 构建产物，解压后取出其中的 `turnip-win-arm64x.zip`，再解压并运行：
+Download the `turnip-windows-<commit>` artifact from a successful Actions run. Extract it, then extract the included `turnip-win-arm64x.zip` and run:
 
 ```bat
 run-with-turnip.cmd "C:\path\application.exe" [arguments]
 ```
 
-例如：
+For example:
 
 ```bat
 run-with-turnip.cmd C:\data\FurMark_win64\furmark.exe --demo furmark-vk --width 1280 --height 720 --gpu-index 0
 ```
 
-某些程序需要在自身目录启动；可先切换到程序目录，再用启动脚本的绝对路径调用。
-脚本仅为子进程设置 Vulkan ICD 环境变量，不替换系统驱动、不修改注册表。
-系统需有 Vulkan loader 和 Microsoft Visual C++ 运行库。
+Some applications must start from their own directory. Change to that directory first, then invoke the launcher using its absolute path.
+The launcher sets Vulkan ICD environment variables only for the child process. It does not replace the system driver or modify the registry.
+The system must have a Vulkan loader and the Microsoft Visual C++ runtime installed.
 
-| 包 | 使用对象 |
+| Package | Intended use |
 |---|---|
-| `turnip-win-arm64.zip` | 原生 ARM64 应用 |
-| `turnip-win-arm64x.zip` | ARM64 和 x64 应用，共用一个 ARM64 + ARM64EC DLL |
-| `*-symbols.zip` | 对应驱动的调试符号 |
+| `turnip-win-arm64.zip` | Native ARM64 applications |
+| `turnip-win-arm64x.zip` | ARM64 and x64 applications, using a single ARM64 + ARM64EC DLL |
+| `*-symbols.zip` | Debug symbols for the corresponding driver |
 
-ARM64X 需要 Windows on Arm；不适用于普通 x64 PC。x64 应用自身仍由 Windows 处理兼容执行，驱动使用 ARM64EC 代码。
+ARM64X requires Windows on Arm and does not work on ordinary x64 PCs. Windows still handles compatibility execution for the x64 application itself, while the driver uses ARM64EC code.
 
-## 构建
+## Building
 
-在 Windows ARM64 上安装 Git、Python、Visual Studio 2026 的 C++ ARM64/ARM64EC 工具链、LLVM 22+ 和 Windows SDK 26100+，然后：
+On Windows ARM64, install Git, Python, Visual Studio 2026 with the C++ ARM64/ARM64EC toolchain, LLVM 22+, and Windows SDK 26100+, then run:
 
 ```powershell
 python scripts/bootstrap.py
@@ -50,22 +50,22 @@ python scripts/bootstrap.py
 .venv/Scripts/python.exe scripts/package.py
 ```
 
-输出位于 `dist/`。可选代理：`python scripts/bootstrap.py --proxy http://127.0.0.1:7890`。
-后续构建如需代理，请在当前终端设置 `HTTP_PROXY` / `HTTPS_PROXY`。
+Packages are written to `dist/`. An optional proxy can be specified with `python scripts/bootstrap.py --proxy http://127.0.0.1:7890`.
+If subsequent build steps need a proxy, set `HTTP_PROXY` / `HTTPS_PROXY` in the current terminal.
 
-CI 验证两种进程架构的 DLL 加载、ICD 协商和入口查询，不把虚拟机上的检查称为真实 GPU 测试。
-在受支持的 Snapdragon 机器上追加运行：
+CI checks DLL loading, ICD negotiation, and entrypoint lookup for both process architectures. These checks on a virtual machine do not constitute GPU testing.
+On a supported Snapdragon machine, also run:
 
 ```powershell
 .venv/Scripts/python.exe scripts/verify.py --gpu --wsi
 ```
 
-`--wsi` 会打开测试窗口并检查实际显示的像素，需要已解锁、可见的桌面。
+`--wsi` opens test windows and checks the pixels actually displayed. It requires an unlocked, visible desktop.
 
-## 开发
+## Development
 
-Mesa 改动按编译兼容、通用 Vulkan 修复、WDDM 后端、WSI、复制优化和 ARM64EC 支持分开提交。
-更新源码版本时显式修改 `mesa-revision.json`，重新执行 CI 和硬件回归。
-不包含高通驱动二进制、私有 PDB、Vulkan SDK 或 FurMark；构建不需要这些文件。
+Mesa changes are split into commits covering build compatibility, common Vulkan fixes, the WDDM backend, WSI, copy optimizations, and ARM64EC support.
+To update the source version, explicitly change `mesa-revision.json` and rerun CI and hardware regression tests.
+Qualcomm driver binaries, private PDBs, the Vulkan SDK, and FurMark are not included and are not required to build the driver.
 
-本仓库脚本与测试使用 MIT 许可证。Mesa 及下载依赖保留各自许可证，驱动包附带 Mesa 许可证说明。
+The scripts and tests in this repository use the MIT license. Mesa and downloaded dependencies retain their respective licenses; driver packages include Mesa's license documentation.

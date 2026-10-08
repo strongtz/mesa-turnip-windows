@@ -1,52 +1,52 @@
-# 构建与交付
+# Building and packaging
 
-## 工具链
+## Toolchain
 
-- Windows ARM64：Meson 配置阶段会运行 ARM64/ARM64EC 编译检查；目前不支持在 x64 主机上直接使用这套原生构建脚本。
-- Visual Studio 2026，C++ ARM64、ARM64EC、x64 工具，以及 LLVM 22+ 的 clang-cl、lld-link、llvm-lib、llvm-objcopy、llvm-readobj。
-- Windows SDK 10.0.26100 或更高；Python 3.12+；Git。
-- 脚本通过 `vswhere` 和 `vcvarsarm64.bat` 发现工具链，不依赖 Community/Enterprise 安装路径。
-- Python 依赖固定在 `requirements.txt`；winflexbison 2.5.25 下载后校验 SHA256；glslang 固定到具体提交。
-- Mesa wrap 依赖使用源码中已有的版本和校验和。首次构建需要访问 GitHub 和 Meson WrapDB。
+- Windows ARM64: Meson runs ARM64/ARM64EC compiler checks during configuration. These native build scripts currently do not support building directly on an x64 host.
+- Visual Studio 2026 with C++ ARM64, ARM64EC, and x64 tools, plus LLVM 22+ tools: clang-cl, lld-link, llvm-lib, llvm-objcopy, and llvm-readobj.
+- Windows SDK 10.0.26100 or newer, Python 3.12+, and Git.
+- The scripts discover the toolchain through `vswhere` and `vcvarsarm64.bat`, without assuming a Community or Enterprise installation path.
+- Python dependencies are pinned in `requirements.txt`. The winflexbison 2.5.25 download is checked against a SHA256 digest, and glslang is pinned to a specific commit.
+- Mesa wrap dependencies use the versions and checksums recorded in the source tree. The first build needs access to GitHub and Meson WrapDB.
 
-`bootstrap.py` 在本仓库创建独立 `.venv` 和 `deps`。已有工具可以复用：
+`bootstrap.py` creates separate `.venv` and `deps` directories in this repository. Existing tools can be reused:
 
 ```powershell
 python scripts/bootstrap.py --glslang C:\tools\glslang --winflexbison C:\tools\winflexbison
 .venv/Scripts/python.exe scripts/build.py --mesa C:\src\mesa --jobs 8
 ```
 
-指定的 Mesa 工作树必须干净，且 HEAD 必须等于锁定提交。脚本不会重置已有源码目录。
+The specified Mesa working tree must be clean, and HEAD must match the pinned commit. The scripts do not reset existing source directories.
 
-## ARM64X 生成过程
+## ARM64X build process
 
-1. 独立构建 ARM64 和 ARM64EC，均使用 `/MD`，zlib 静态链接。
-2. 修正 Meson 1.12.1 对 clang-cl `arm64ec` 目标的识别；修改仅限本地 Python 环境。
-3. 在独立副本中处理 LLVM 22 COFF 弱符号与 ARM64EC AntiDependency 别名的冲突。仅改写 Vulkan 入口表的可选函数引用；保留原始 Ninja 目标文件，未实现函数仍为弱引用。
-4. 用 `/linkreprofullpathrsp` 收集两套已解析的链接输入，使用 `/machine:arm64x` 和两套导出定义合并。
-5. 检查 PE machine、CHPE 元数据，生成 ICD manifest、构建信息和 SHA256 清单。
-6. 分别从 ARM64 和 x64 加载驱动，验证 ICD 协商以及已实现/不存在的入口查询。
+1. Build ARM64 and ARM64EC separately, both using `/MD` and linking zlib statically.
+2. Fix Meson 1.12.1's detection of the clang-cl `arm64ec` target. This change is limited to the local Python environment.
+3. Resolve conflicts between LLVM 22 COFF weak symbols and ARM64EC AntiDependency aliases in separate copies of the object files. Only optional function references in Vulkan entrypoint tables are rewritten. Original Ninja object files are preserved, and unimplemented functions remain weak references.
+4. Collect both sets of resolved linker inputs with `/linkreprofullpathrsp`, then merge them using `/machine:arm64x` and the two export definitions.
+5. Check the PE machine type and CHPE metadata, then generate the ICD manifest, build information, and SHA256 checksums.
+6. Load the driver from ARM64 and x64 processes to verify ICD negotiation and lookup of implemented and nonexistent entrypoints.
 
-ARM64EC 使用 ARM64 目录下含 EC 成员的混合 CRT/SDK 库。不能简单把所有库目录替换成 x64。
-这些工具链兼容措施集中在 `scripts/arm64ec.py`，未知 C++ 符号形式会导致构建失败，而不是静默产生错误入口表。
+ARM64EC uses hybrid CRT/SDK libraries containing EC members from the ARM64 library directories. Simply replacing all library paths with x64 paths does not work.
+These toolchain compatibility measures are implemented in `scripts/arm64ec.py`. Unknown C++ symbol forms cause the build to fail rather than silently produce incorrect entrypoint tables.
 
-参考：[Microsoft ARM64X 构建说明](https://learn.microsoft.com/en-us/windows/arm/arm64x-build)。
+Reference: [Microsoft ARM64X build instructions](https://learn.microsoft.com/en-us/windows/arm/arm64x-build).
 
 ## GitHub Actions
 
-工作流使用 `windows-11-arm`，触发条件是本仓库 push、pull request 或手动运行。
-固定 Mesa SHA，构建两套代码，生成 ARM64/ARM64X 包和 PDB 包，并上传日志与验证报告。
-工作流不需要私有 PDB，也不需要 GitHub secret。权限仅为 `contents: read`。
+The workflow uses `windows-11-arm` and runs on pushes, pull requests, or manual dispatch.
+It pins the Mesa SHA, builds both architectures, generates ARM64/ARM64X driver and PDB packages, and uploads logs and verification reports.
+The workflow requires neither private PDBs nor GitHub secrets. Its permissions are limited to `contents: read`.
 
-托管 runner 没有本机 Qualcomm GPU/KMD，所以 CI 不运行 `--gpu` 或 `--wsi`。
-下载构建产物后，仍需在真实设备上进行图形、计算、同步、内存压力和 CTS 验证。
+The hosted runner does not have this machine's Qualcomm GPU/KMD, so CI does not run `--gpu` or `--wsi`.
+After downloading artifacts, graphics, compute, synchronization, memory stress, and CTS validation still need to run on real hardware.
 
-## 目录
+## Directories
 
-- `build/`：Meson/Ninja 输出、ARM64EC 入口表副本、链接响应文件、测试可执行文件。
-- `out/`：未压缩包、构建信息、验证报告。
-- `dist/`：发布 ZIP。
-- `logs/`：测试输出。
-- `tests/`：有确定输出检查的计算、复制、同步、BDA 和窗口测试；内存压力测试另行手动运行。
+- `build/`: Meson/Ninja output, copies of ARM64EC entrypoint objects, linker response files, and test executables.
+- `out/`: Uncompressed packages, build information, and verification reports.
+- `dist/`: Distribution ZIP files.
+- `logs/`: Test output.
+- `tests/`: Compute, copy, synchronization, BDA, and window tests with explicit output checks. Memory stress tests are run separately by hand.
 
-上述生成目录均不提交。PDB 独立打包，使用时和相同构建的 DLL 配对。
+Generated directories are not committed. PDBs are packaged separately and must be paired with DLLs from the same build.
