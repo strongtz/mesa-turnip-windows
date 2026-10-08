@@ -1,5 +1,18 @@
 # 验证记录
 
+## GitHub Actions 产物验证（2026-10-08）
+
+[成功运行](https://github.com/strongtz/mesa-turnip-windows/actions/runs/37739616030)，构建脚本提交 `dac9199b068b7b01c76c60c8ace6f8567e8954d0`，Mesa `16f87fbcc8e1aced8b2778e4df639762974f9e34`。
+
+- `windows-11-arm` 从干净环境下载依赖，编译 ARM64/ARM64EC，合并 ARM64X，编译两种测试程序，并通过三组 DLL ABI 检查。
+- 上传了 ARM64、ARM64X 运行包及各自的 PDB 包；总产物约 31 MB。
+- 下载上述 CI 产物到 Snapdragon X Elite 后，四个 ZIP 的完整性和全部 SHA256 清单条目通过。
+- 对下载包运行同一套真实 GPU/窗口检查：三个包/架构组合共 24 项全部通过，包括每组 18 个交换链、360 次显示像素检查。
+- CI ARM64 DLL：`525f738db065e4e710ab666530414c002257b803b6bae602e76c99ebe78e95db`。
+- CI ARM64X DLL：`e9669b35d0c3dd4f7b3a5e82ca30af4eb9cd0f4a8b1b192bf156032c434db4c7`。
+
+真实 GPU 检查是在下载后于本机完成的，不是在 GitHub 托管 runner 上完成的。
+
 ## 独立脚本的干净构建（2026-10-08）
 
 Mesa `16f87fbcc8e1aced8b2778e4df639762974f9e34`，本机 LLVM 22.1.3。

@@ -14,7 +14,7 @@ GPU 命令和着色器由 Turnip/IR3 生成；窗口呈现通过共享 GPU 缓�
 
 ## 使用
 
-从 Actions 的成功运行下载 `turnip-win-arm64x.zip`，解压后运行：
+从 Actions 的成功运行下载 `turnip-windows-<commit>` 构建产物，解压后取出其中的 `turnip-win-arm64x.zip`，再解压并运行：
 
 ```bat
 run-with-turnip.cmd "C:\path\application.exe" [arguments]
