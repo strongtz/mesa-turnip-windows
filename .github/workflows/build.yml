@@ -24,10 +24,18 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Bootstrap pinned dependencies
         run: python scripts/bootstrap.py
+      - name: Build ARM64 and x64 probes
+        run: |
+          $revision = Get-Content mesa-revision.json | ConvertFrom-Json
+          git init mesa
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          git -C mesa fetch --depth=1 $revision.repository $revision.revision
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          git -C mesa checkout --detach $revision.revision
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          .venv/Scripts/python.exe scripts/build_tests.py
       - name: Build ARM64 and ARM64X
         run: .venv/Scripts/python.exe scripts/build.py --jobs 4
-      - name: Build ARM64 and x64 probes
-        run: .venv/Scripts/python.exe scripts/build_tests.py
       - name: Verify both process ABIs
         run: .venv/Scripts/python.exe scripts/verify.py
       - name: Package binaries, symbols and reports

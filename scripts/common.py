@@ -8,6 +8,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 TARGET = 'src/freedreno/vulkan/vulkan_freedreno.dll'
+_BASE_ENV = None
 
 def run(args, **kwargs):
     print('+ ' + subprocess.list2cmdline([str(a) for a in args]), flush=True)
@@ -27,8 +28,11 @@ def require_arm64_host():
         raise RuntimeError('Use Windows ARM64; x64-host cross compilation is not supported by these scripts.')
 
 def tool_environment(target='arm64'):
+    global _BASE_ENV
     require_arm64_host()
-    env = {key.upper(): value for key, value in os.environ.items()}
+    if _BASE_ENV is None:
+        _BASE_ENV = {key.upper(): value for key, value in os.environ.items()}
+    env = _BASE_ENV.copy()
     vswhere = Path(env.get('PROGRAMFILES(X86)', 'C:/Program Files (x86)')) / 'Microsoft Visual Studio/Installer/vswhere.exe'
     installation = subprocess.check_output([str(vswhere), '-latest', '-products', '*',
         '-requires', 'Microsoft.VisualStudio.Component.VC.Tools.ARM64', '-property', 'installationPath'], text=True).strip()
